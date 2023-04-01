@@ -6,6 +6,28 @@
 
 using namespace std;
 
+void printStatement(const Statement& statement) {
+    if (statement.label) cout << "[lbl]" << statement.label->value.value << endl;
+    else if (statement.instruction) {
+        auto opcodeName = Opcodes::nameFromOpCode(statement.instruction->opcode.value);
+        if (opcodeName) cout << "[op]" << *opcodeName << " ";
+        else cout << "parseStatement opcode <unknown>" << endl;
+        for (auto& operand : statement.instruction->operands) {
+            if (operand.integer) cout << "[int]" << operand.integer->value << " ";
+            else if (operand.identifier) cout << "[id]" << operand.identifier->value << " ";
+            else cout << "parseStatement operand <unknown>" << endl;
+        }
+    }
+    if (statement.comment) cout << "[com]" << statement.comment->value << endl;
+}
+
+void printProgram(const Program& program) {
+    for (auto& statement : program.statements) {
+        printStatement(statement);
+    }
+}
+
+
 int main() {
 
     auto parseInt = Parser("     34.35%$ fd   ").parseInteger();
@@ -39,7 +61,7 @@ int main() {
     }
     else cout << "parseOpcode <none>" << endl;
 
-    auto parseInstruction = Parser("        movi 123 matt test%&$#*(   ").parseInstruction();
+    auto parseInstruction = Parser("        movi 123hello test%&$#*(   ").parseInstruction();
     if (parseInstruction) {
         auto opCodeName = Opcodes::nameFromOpCode(parseInstruction->opcode.value);
         if (opCodeName) {
@@ -54,6 +76,9 @@ int main() {
     }
     else cout << "parseInstruction <none>" << endl;
 
+    auto parseStatement = Parser("   movi 123 hello test ;%&$#*(   ").parseStatement();
+    if (parseStatement) printStatement(*parseStatement);
+    else cout << "parseStatement <none>" << endl;
 
 
 

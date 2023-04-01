@@ -9,7 +9,6 @@
 using namespace std;
 
 
-
 class Parser {
 public:
 
@@ -18,11 +17,59 @@ public:
 
     Parser(const string& input) : input(input), position(0) {}
 
+    optional<Program> parse(const string& input) {
+        this->input = input;
+        this->position = 0;
+        return parseProgram();
+    }
 
-    //<instruction> :: = <opcode>{ <operand> }
+    //<program> :: = [<vws>] <statement> {<vws> <statement>}[<vws>]
+    optional<Program> parseProgram() {
+        parseVerticalWhitespace();
+        Program program;
+        while (true) {
+            auto statement = parseStatement();
+            if (statement) program.statements.push_back(statement.value());
+            else break;
+            if (parseVerticalWhitespace() == false) break;
+        }
+        parseVerticalWhitespace();
+        parseHorizontalWhitespace();
+        if (position < input.size()) return {};
+        return program;
+    }
+
+    //<statement> ::= <label> [<comment>] | <instruction> [<comment>] | <comment>
+    optional<Statement> parseStatement() {
+        parseHorizontalWhitespace();
+        auto label = parseLabel();
+        if (label) {
+            Statement statement;
+            statement.label = label;
+            auto comment = parseComment();
+            if (comment) statement.comment = comment;
+            return statement;
+        }
+        auto instruction = parseInstruction();
+        if (instruction) {
+            Statement statement;
+            statement.instruction = instruction;
+            auto comment = parseComment();
+            if (comment) statement.comment = comment;
+            return statement;
+        }
+        auto comment = parseComment();
+        if (comment) {
+            Statement statement;
+            statement.comment = comment;
+            return statement;
+        }
+        return {};
+    }
+
+    //<instruction> ::= <opcode> {<hzws> <operand>}
     optional<Instruction> parseInstruction() {
         parseHorizontalWhitespace();
-        size_t pos = position;
         auto result = parseOpcode();
         if (result) {
             Instruction instruction;
@@ -34,7 +81,6 @@ public:
             }
             return instruction;
         }
-        position = pos;
         return {};
     }
 
@@ -56,7 +102,7 @@ public:
         if (integer) return Operand{ *integer, {} };
         auto identifier = parseIdentifier();
         if (identifier) return Operand{ {}, *identifier };
-        else return {};
+        return {};
     }
 
     // if the parse method fails, position should not change
@@ -69,10 +115,8 @@ public:
             position++;
             return Label{ *result };
         }
-        else {
-            position = revertPosition;
-            return {};
-        }
+        position = revertPosition;
+        return {};
     }
 
     // <comment> :: = ';'{<any character not a new line>}
