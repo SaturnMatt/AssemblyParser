@@ -9,18 +9,41 @@
 using namespace std;
 
 
+
+
 class Parser {
 public:
 
     string input;
     size_t position;
 
-    Parser(const string& input) : input(input), position(0) {}
+    Parser() : input(), position(0) {}
 
-    optional<Program> parse(const string& input) {
+    string extractLine(const string& input, size_t position, bool arrow = false) {
+        if (position >= input.size()) return "";
+        size_t begin = position;
+        while (begin > 0 && !isVerticalWhitespace(input[begin - 1])) begin--;
+        size_t end = position;
+        while (end < input.size() && !isVerticalWhitespace(input[end])) end++;
+
+        string result = input.substr(begin, end - begin);
+        if (arrow) {
+            result += "\n";
+            for (size_t i = begin; i < position; i++) result += " ";
+            result += "^";
+        }
+        return result;
+    }
+
+    Program parse(const string& input) {
         this->input = input;
         this->position = 0;
-        return parseProgram();
+        auto result = parseProgram();
+        if (result) return result.value();
+        //throw "Unexpected character '" + string(1, input[position]) + "' at position " + to_string(position) + "\n";
+        string msg = "Unexpected character '" + string(1, input[position]) + "'\n";
+        msg += extractLine(input, position, true);
+        throw runtime_error(msg);
     }
 
     //<program> :: = [<vws>] <statement> {<vws> <statement>}[<vws>]
@@ -127,7 +150,7 @@ public:
             position++;
         }
         else return {};
-        while (position < input.size() && isVerticalWhitespace() == false) {
+        while (position < input.size() && isVerticalWhitespace(input[position]) == false) {
             result += input[position];
             position++;
         }
@@ -166,15 +189,15 @@ public:
         return Integer{ result };
     }
 
-    bool isVerticalWhitespace() {
-        if (position < input.size() && (input[position] == '\n' || input[position] == '\r')) return true;
+    bool isVerticalWhitespace(char character) {
+        if (character == '\n' || character == '\r') return true;
         else return false;
     }
 
     bool parseVerticalWhitespace() {
         parseHorizontalWhitespace();
         bool result = false;
-        while (isVerticalWhitespace()) {
+        while (position < input.size() && isVerticalWhitespace(input[position])) {
             result = true;
             position++;
             parseHorizontalWhitespace();
@@ -182,14 +205,14 @@ public:
         return result;
     }
 
-    bool isHorizontalWhitespace() {
-        if (position < input.size() && (input[position] == ' ' || input[position] == '\t' || input[position] == ',')) return true;
+    bool isHorizontalWhitespace(char character) {
+        if ((character == ' ' || character == '\t' || character == ',')) return true;
         else return false;
     }
 
     bool parseHorizontalWhitespace() {
         bool result = false;
-        while (isHorizontalWhitespace()) {
+        while (position < input.size() && isHorizontalWhitespace(input[position])) {
             result = true;
             position++;
         }
